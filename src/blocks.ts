@@ -48,12 +48,22 @@ export type RawBlock = {
   };
 };
 
+export type TableBlock = {
+  type: "table";
+  data: {
+    withHeadings: boolean;
+    stretched: boolean;
+    content: string[][];
+  };
+};
+
 export type BlockData =
   | ParagraphBlock
   | QuoteBlock
   | SimpleImageBlock
   | HeaderBlock
   | ListBlock
-  | RawBlock;
+  | RawBlock
+  | TableBlock;
 
 export type EditorContent = BlockData[];

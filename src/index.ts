@@ -7,6 +7,7 @@ import type {
   QuoteBlock,
   RawBlock,
   SimpleImageBlock,
+  TableBlock,
 } from "./blocks";
 
 import { exists } from "./utils";
@@ -158,6 +159,56 @@ const rawHandler: TagHandler<RawBlock> = (data) =>
       ]
     : [];
 
+const tableHandler: TagHandler<TableBlock> = (data) => {
+  const rows: string[][] = [];
+  let withHeadings = false;
+
+  const parseRows = (children: TransformResult[]) => {
+    for (const child of children) {
+      if (child.tagName === "THEAD") {
+        withHeadings = true;
+        parseRows(child.children);
+      } else if (child.tagName === "TBODY" || child.tagName === "TFOOT") {
+        parseRows(child.children);
+      } else if (child.tagName === "TR") {
+        const cells: string[] = [];
+        for (const cell of child.children) {
+          if (cell.tagName === "TD" || cell.tagName === "TH") {
+            cells.push(cell.htmlContent || cell.textContent || "");
+          }
+        }
+        rows.push(cells);
+      }
+    }
+  };
+
+  parseRows(data.children);
+
+  // If there's no explicit <thead> but we have <th> cells in the first row,
+  // treat it as having headings
+  if (!withHeadings && data.children.length > 0) {
+    const firstRowSource = data.element.querySelector("tr");
+    if (firstRowSource && firstRowSource.querySelector("th")) {
+      withHeadings = true;
+    }
+  }
+
+  if (rows.length === 0) {
+    return [];
+  }
+
+  return [
+    {
+      type: "table",
+      data: {
+        withHeadings,
+        stretched: false,
+        content: rows,
+      },
+    },
+  ];
+};
+
 const tagHandlers: TagHandlerMap = {
   P: paragraphHandler,
   A: paragraphHandler,
@@ -182,6 +233,10 @@ const tagHandlers: TagHandlerMap = {
   H4: headingHandler(4),
   H5: headingHandler(5),
   H6: headingHandler(6),
+  TABLE: tableHandler,
+  THEAD: containerHandler,
+  TBODY: containerHandler,
+  TFOOT: containerHandler,
 };
 
 /**
